@@ -588,7 +588,7 @@ def main(args, model=None) -> SummarizationModule:
         model,
         args,
         logging_callback=Seq2SeqLoggingCallback(),
-        checkpoint_callback=m(
+        checkpoint_callback=get_checkpoint_callback(
             args.output_dir, model.val_metric, args.save_top_k, lower_is_better
         ),
         early_stopping_callback=es_callback,
