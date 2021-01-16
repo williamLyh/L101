@@ -86,21 +86,17 @@ class SummarizationModule(BaseTransformer):
         n_observations_per_split = {
             "train": self.hparams.n_train,
             "val": self.hparams.n_val,
-            "test_seen": self.hparams.n_test,
-            "test_unseen": self.hparams.n_test,
-            "test_both": self.hparams.n_test,
+            "test": self.hparams.n_test,
         }
         self.n_obs = {k: v if v >= 0 else None for k, v in n_observations_per_split.items()}
 
         self.target_lens = {
             "train": self.hparams.max_target_length,
             "val": self.hparams.val_max_target_length,
-            "test_seen": self.hparams.test_max_target_length,
-            "test_unseen": self.hparams.test_max_target_length,
-            "test_both": self.hparams.test_max_target_length,
+            "test": self.hparams.test_max_target_length,
         }
         assert self.target_lens["train"] <= self.target_lens["val"], f"target_lens: {self.target_lens}"
-        assert self.target_lens["train"] <= self.target_lens["test_both"], f"target_lens: {self.target_lens}"
+        assert self.target_lens["train"] <= self.target_lens["test"], f"target_lens: {self.target_lens}"
         if self.hparams.freeze_embeds:
             freeze_embeds(self.model)
         if self.hparams.freeze_encoder:
@@ -401,6 +397,7 @@ class SummarizationModule(BaseTransformer):
         return dataset
 
     def get_dataloader(self, type_path: str, batch_size: int, shuffle: bool = False) -> DataLoader:
+
         dataset = self.get_dataset(type_path)
 
         if self.hparams.sortish_sampler and type_path != "test":

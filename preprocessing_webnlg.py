@@ -184,35 +184,32 @@ if not os.path.exists(path):
 
 # delete previous processed data
 os.system("rm " + path + '/*')
+print('delete')
 
 # loop through train, dev and test set.
-sample_sizes = [50, 100, 200, 500]
 # training set
-for sample_number in sample_sizes:
-    part = 'train'
-    datapoints = random.sample(dataset_points[0], sample_number)
-    nodes = []
-    surfaces = []
-    surfaces_eval = []
+part = 'train'
+datapoints = dataset_points[0]
+nodes = []
+surfaces = []
+surfaces_eval = []
 
-    for datapoint in datapoints:
-        node = datapoint[0]
-        sur = datapoint[1]
-        nodes.append(' '.join(node))
-        surfaces.append(sur[0])
-        surfaces_eval.append(sur[1])
+for datapoint in datapoints:
+    node = datapoint[0]
+    sur = datapoint[1]
+    nodes.append(' '.join(node))
+    surfaces.append(sur[0])
+    surfaces_eval.append(sur[1])
 
-    path_to_save = path + '/' + str(sample_number) + '/'
-    Path(path_to_save).mkdir(exist_ok=True)
-    with open(path_to_save + part + '.source', 'w', encoding='utf8') as f:
-        f.write('\n'.join(nodes))
-        f.write('\n')
-    with open(path_to_save + part + '.target', 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces))
-        f.write('\n')
-    with open(path_to_save + part + '.target_eval', 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces_eval))
-        f.write('\n')
+with open(path + '/' + part + '.source', 'w', encoding='utf8') as f:
+    f.write('\n'.join(nodes))
+    f.write('\n')
+with open(path + '/' + part + '.target', 'w', encoding='utf8') as f:
+    f.write('\n'.join(surfaces))
+    f.write('\n')
+with open(path + '/' + part + '.target_eval', 'w', encoding='utf8') as f:
+    f.write('\n'.join(surfaces_eval))
+    f.write('\n')
 
 # test set
 triple_lengths = [1,2,3,4,5,6]   # 5 for triple_len>=5, 6 for all data
