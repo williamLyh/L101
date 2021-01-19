@@ -6,13 +6,11 @@ import glob
 from pathlib import Path
 import re
 import unidecode
-from collections import Counter
-import random
 import os
 folder = sys.argv[1]
 
-# datasets = ['train', 'dev', 'test_both', 'test_seen', 'test_unseen']
-datasets = ['train', 'dev', 'test']
+datasets = ['train', 'dev', 'test_both', 'test_seen', 'test_unseen']
+# datasets = ['train', 'dev', 'test_both', 'test_seen']
 
 def camel_case_split(identifier):
     matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', identifier)
@@ -150,24 +148,48 @@ def get_data(file_):
 
 train_cat = set()
 dataset_points = []
-
 for d in datasets:
     cont_all = 0
     datapoints = []
     all_cats = set()
+    # if 'unseen' in d:
+    #     d_set = 'test'
+    #     files = [folder + '/' + d_set + '/testdata_unseen_with_lex.xml']
+    # elif 'test' in d:
+    #     d_set = 'test'
+    #     files = [folder + '/' + d_set + '/testdata_with_lex.xml']
+    # else:
+    #     files = Path(folder + '/' + d).rglob('*.xml')
 
-    files = Path(folder + '/' + d).rglob('*.xml')
+    if 'test' in d:
+        files = Path(folder + '/' + 'test').rglob('*.xml')
+    else:
+        files = Path(folder + '/' + d).rglob('*.xml')
+
     files = sorted(list(files))
+    triple_len = 1
 
     for idx, filename in enumerate(files):
         filename = str(filename)
+
         if d == 'train':
             datapoint, cats, cont = get_data(filename)
         else:
             datapoint, cats, cont = get_data_dev_test(filename, train_cat, d)
         cont_all += cont
         all_cats.update(cats)
-        datapoints.extend(datapoint)
+        if 'test' in d:
+            # print(datapoint[0])
+            datapoint_new = []
+            for dp in datapoint:
+                if dp[0].count('<H>')<=triple_len:
+                    datapoint_new.append(dp)
+            datapoints.extend(datapoint_new)
+            # print(datapoint_new[:5])
+            # assert False
+        else:
+            datapoints.extend(datapoint)    # what really important
+
     if d == 'train':
         train_cat = all_cats
     print(d, len(datapoints))
@@ -177,55 +199,19 @@ for d in datasets:
     dataset_points.append(datapoints)
 
 
-# path = os.path.dirname(os.path.realpath(__file__)) + '/webnlg/'
-path = 'data/webnlg'
-if not os.path.exists(path):
-    os.makedirs(path)
+path_root = os.path.dirname(os.path.realpath(__file__)) + '/data/webnlg'
+if not os.path.exists(path_root):
+    os.makedirs(path_root)
 
 # delete previous processed data
-os.system("rm " + path + '/*')
-print('delete')
+os.system("rm -r " + path_root + '/*')
 
-# loop through train, dev and test set.
-# training set
-part = 'train'
-datapoints = dataset_points[0]
-nodes = []
-surfaces = []
-surfaces_eval = []
+for idx, datapoints in enumerate(dataset_points):
 
-for datapoint in datapoints:
-    node = datapoint[0]
-    sur = datapoint[1]
-    nodes.append(' '.join(node))
-    surfaces.append(sur[0])
-    surfaces_eval.append(sur[1])
+    part = datasets[idx]
 
-with open(path + '/' + part + '.source', 'w', encoding='utf8') as f:
-    f.write('\n'.join(nodes))
-    f.write('\n')
-with open(path + '/' + part + '.target', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces))
-    f.write('\n')
-with open(path + '/' + part + '.target_eval', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces_eval))
-    f.write('\n')
-
-# test set
-triple_lengths = [1,2,3,4,5,6]   # 5 for triple_len>=5, 6 for all data
-for triple_len in triple_lengths:
-    part = 'test'
-    datapoints = []
-    if triple_len<5:
-        for d in dataset_points[2]:
-            if d[0].count('<H>') == triple_len:
-                datapoints.append(d)
-    elif triple_len==5:
-        for d in dataset_points[2]:
-            if d[0].count('<H>') >= triple_len:
-                datapoints.append(d)
-    else:
-        datapoints = dataset_points[2]
+    if part == 'dev':
+        part = 'val'
 
     nodes = []
     surfaces = []
@@ -236,179 +222,63 @@ for triple_len in triple_lengths:
     surfaces_2_eval = []
     surfaces_3_eval = []
     for datapoint in datapoints:
+        if datapoint[1]==[]:
+            continue
         node = datapoint[0]
         sur = datapoint[1]
-        if sur == []:
-            continue
         nodes.append(' '.join(node))
-        surfaces.append(sur[0][0])
-        surfaces_eval.append(sur[0][1])
-        if len(sur) > 1:
-            surfaces_2.append(sur[1][0])
-            surfaces_2_eval.append(sur[1][1])
+        if part != 'train':
+            try:
+                surfaces.append(sur[0][0])
+            except:
+                print(sur)
+            surfaces_eval.append(sur[0][1])
+            if len(sur) > 1:
+                surfaces_2.append(sur[1][0])
+                surfaces_2_eval.append(sur[1][1])
+            else:
+                surfaces_2.append('')
+                surfaces_2_eval.append('')
+            if len(sur) > 2:
+                surfaces_3.append(sur[2][0])
+                surfaces_3_eval.append(sur[2][1])
+            else:
+                surfaces_3.append('')
+                surfaces_3_eval.append('')
         else:
-            surfaces_2.append('')
-            surfaces_2_eval.append('')
-        if len(sur) > 2:
-            surfaces_3.append(sur[2][0])
-            surfaces_3_eval.append(sur[2][1])
-        else:
-            surfaces_3.append('')
-            surfaces_3_eval.append('')
+            surfaces.append(sur[0])
+            surfaces_eval.append(sur[1])
 
-    if triple_len<5:
-        file_name = '_'+ str(triple_len)
-    elif triple_len==5:
-        file_name = '_'+ str(567)
-    else:
-        file_name = ''
+    path = path_root + '/triple' + str(triple_len)
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-    with open(path + '/' + part +file_name + '.source', 'w', encoding='utf8') as f:
+    with open(path + '/' + part + '.source', 'w', encoding='utf8') as f:
         f.write('\n'.join(nodes))
         f.write('\n')
-    with open(path + '/' + part +file_name + '.target', 'w', encoding='utf8') as f:
+    with open(path + '/' + part + '.target', 'w', encoding='utf8') as f:
         f.write('\n'.join(surfaces))
         f.write('\n')
-    with open(path + '/' + part +file_name + '.target2', 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces_2))
-        f.write('\n')
-    with open(path + '/' + part +file_name + '.target3', 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces_3))
-        f.write('\n')
+    if part != 'train':
+        with open(path + '/' + part + '.target2', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_2))
+            f.write('\n')
+        with open(path + '/' + part + '.target3', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_3))
+            f.write('\n')
 
-    with open(path + '/' + part +file_name + '.target_eval', 'w', encoding='utf8') as f:
+    with open(path + '/' + part + '.target_eval', 'w', encoding='utf8') as f:
         f.write('\n'.join(surfaces_eval))
         f.write('\n')
-    with open(path + '/' + part +file_name + '.target2_eval', 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces_2_eval))
-        f.write('\n')
-    with open(path + '/' + part +file_name + '.target3_eval', 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces_3_eval))
-        f.write('\n')
+    if part != 'train':
+        with open(path + '/' + part + '.target2_eval', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_2_eval))
+            f.write('\n')
+        with open(path + '/' + part + '.target3_eval', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_3_eval))
+            f.write('\n')
 
-# val set
-part = 'val'
-datapoints = dataset_points[1]
-nodes = []
-surfaces = []
-surfaces_2 = []
-surfaces_3 = []
-
-surfaces_eval = []
-surfaces_2_eval = []
-surfaces_3_eval = []
-
-for datapoint in datapoints:
-    node = datapoint[0]
-    sur = datapoint[1]
-    if sur == []:
-        continue
-    nodes.append(' '.join(node))
-    surfaces.append(sur[0][0])
-    surfaces_eval.append(sur[0][1])
-    if len(sur) > 1:
-        surfaces_2.append(sur[1][0])
-        surfaces_2_eval.append(sur[1][1])
-    else:
-        surfaces_2.append('')
-        surfaces_2_eval.append('')
-    if len(sur) > 2:
-        surfaces_3.append(sur[2][0])
-        surfaces_3_eval.append(sur[2][1])
-    else:
-        surfaces_3.append('')
-        surfaces_3_eval.append('')
-
-with open(path + '/' + part + '.source', 'w', encoding='utf8') as f:
-    f.write('\n'.join(nodes))
-    f.write('\n')
-with open(path + '/' + part + '.target', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces))
-    f.write('\n')
-with open(path + '/' + part + '.target2', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces_2))
-    f.write('\n')
-with open(path + '/' + part + '.target3', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces_3))
-    f.write('\n')
-
-with open(path + '/' + part + '.target_eval', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces_eval))
-    f.write('\n')
-with open(path + '/' + part + '.target2_eval', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces_2_eval))
-    f.write('\n')
-with open(path + '/' + part + '.target3_eval', 'w', encoding='utf8') as f:
-    f.write('\n'.join(surfaces_3_eval))
-    f.write('\n')
-
-
-# for idx, datapoints in enumerate(dataset_points):
-#
-#     part = datasets[idx]
-#
-#     if part == 'dev':
-#         part = 'val'
-#
-#     nodes = []
-#     surfaces = []
-#     surfaces_2 = []
-#     surfaces_3 = []
-#
-#     surfaces_eval = []
-#     surfaces_2_eval = []
-#     surfaces_3_eval = []
-#     for datapoint in datapoints:
-#         node = datapoint[0]
-#         sur = datapoint[1]
-#         if sur==[]:
-#             continue
-#         nodes.append(' '.join(node))
-#         if part != 'train':
-#             surfaces.append(sur[0][0])
-#             surfaces_eval.append(sur[0][1])
-#             if len(sur) > 1:
-#                 surfaces_2.append(sur[1][0])
-#                 surfaces_2_eval.append(sur[1][1])
-#             else:
-#                 surfaces_2.append('')
-#                 surfaces_2_eval.append('')
-#             if len(sur) > 2:
-#                 surfaces_3.append(sur[2][0])
-#                 surfaces_3_eval.append(sur[2][1])
-#             else:
-#                 surfaces_3.append('')
-#                 surfaces_3_eval.append('')
-#         else:
-#             surfaces.append(sur[0])
-#             surfaces_eval.append(sur[1])
-#
-#     with open(path + '/' + part + '.source', 'w', encoding='utf8') as f:
-#         f.write('\n'.join(nodes))
-#         f.write('\n')
-#     with open(path + '/' + part + '.target', 'w', encoding='utf8') as f:
-#         f.write('\n'.join(surfaces))
-#         f.write('\n')
-#     if part != 'train':
-#         with open(path + '/' + part + '.target2', 'w', encoding='utf8') as f:
-#             f.write('\n'.join(surfaces_2))
-#             f.write('\n')
-#         with open(path + '/' + part + '.target3', 'w', encoding='utf8') as f:
-#             f.write('\n'.join(surfaces_3))
-#             f.write('\n')
-#
-#     with open(path + '/' + part + '.target_eval', 'w', encoding='utf8') as f:
-#         f.write('\n'.join(surfaces_eval))
-#         f.write('\n')
-#     if part != 'train':
-#         with open(path + '/' + part + '.target2_eval', 'w', encoding='utf8') as f:
-#             f.write('\n'.join(surfaces_2_eval))
-#             f.write('\n')
-#         with open(path + '/' + part + '.target3_eval', 'w', encoding='utf8') as f:
-#             f.write('\n'.join(surfaces_3_eval))
-#             f.write('\n')
-#
-#         path_c = os.path.dirname(os.path.realpath(__file__))
-#         os.system("python " + path_c + '/' + "convert_files_crf.py " + path + '/' + part)
-#         os.system("python " + path_c + '/' + "convert_files_meteor.py " + path + '/' + part)
+        path_c = os.path.dirname(os.path.realpath(__file__))
+        os.system("python " + path_c + '/' + "convert_files_crf.py " + path + '/' + part)
+        os.system("python " + path_c + '/' + "convert_files_meteor.py " + path + '/' + part)
 

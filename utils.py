@@ -112,7 +112,8 @@ class AbstractSeq2SeqDataset(Dataset):
         tokenizer,
         data_dir,
         max_source_length,
-        max_target_length,
+        max_target_len
+        gth,
         type_path="train",
         n_obs=None,
         prefix="",
