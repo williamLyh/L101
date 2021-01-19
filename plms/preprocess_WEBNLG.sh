@@ -5,7 +5,7 @@ if [ "$#" -lt 1 ]; then
   exit 2
 fi
 
-python plms/webnlg/data/generate_input_webnlg.py ${1}
+python webnlg/data/generate_input_webnlg.py ${1}
 
 
 

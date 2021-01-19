@@ -9,7 +9,7 @@ if [[ ${1} == *"t5"* ]]; then
   bash webnlg/finetune_graph2text.sh ${1} ${2}
 fi
 if [[ ${1} == *"bart"* ]]; then
-  bash plms/webnlg/finetune_graph2text_bart.sh ${1} ${2}
+  bash webnlg/finetune_graph2text_bart.sh ${1} ${2}
 fi
 
 
